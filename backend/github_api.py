@@ -1,4 +1,5 @@
 import os
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 import httpx
@@ -132,35 +133,42 @@ def get_top_repos(repos: list, limit: int = 6) -> list:
 
 async def fetch_commit_activity(username: str, repos: list) -> list:
     """Fetch commit activity for the past year."""
-    # Use commit activity from top repos
     activity_map = {}
     today = datetime.now()
     year_ago = today - timedelta(days=365)
 
     async with httpx.AsyncClient() as client:
-        for repo in repos[:10]:  # Limit to avoid rate limits
+        for repo in repos[:10]:
             if repo.get("fork"):
                 continue
             try:
-                # Get commit activity stats
-                response = await client.get(
-                    f"{GITHUB_API_BASE}/repos/{username}/{repo['name']}/stats/commit_activity",
-                    headers=get_headers(),
-                    timeout=10.0,
-                )
-                if response.status_code == 200:
-                    weeks = response.json()
-                    if isinstance(weeks, list):
-                        for week in weeks:
-                            timestamp = week.get("week", 0)
-                            week_date = datetime.fromtimestamp(timestamp)
-                            if week_date >= year_ago:
-                                week_str = week_date.strftime("%Y-%m-%d")
-                                activity_map[week_str] = activity_map.get(week_str, 0) + week.get("total", 0)
+                url = f"{GITHUB_API_BASE}/repos/{username}/{repo['name']}/stats/commit_activity"
+
+                # GitHub returns 202 while computing stats, retry up to 3 times
+                for attempt in range(3):
+                    response = await client.get(
+                        url,
+                        headers=get_headers(),
+                        timeout=10.0,
+                    )
+                    if response.status_code == 200:
+                        weeks = response.json()
+                        if isinstance(weeks, list):
+                            for week in weeks:
+                                timestamp = week.get("week", 0)
+                                week_date = datetime.fromtimestamp(timestamp)
+                                if week_date >= year_ago:
+                                    week_str = week_date.strftime("%Y-%m-%d")
+                                    activity_map[week_str] = activity_map.get(week_str, 0) + week.get("total", 0)
+                        break
+                    elif response.status_code == 202:
+                        # GitHub is computing stats, wait and retry
+                        await asyncio.sleep(1)
+                    else:
+                        break
             except Exception:
                 continue
 
-    # Convert to sorted list
     activity = [
         {"date": date, "count": count}
         for date, count in sorted(activity_map.items())
