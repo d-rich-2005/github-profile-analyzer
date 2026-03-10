@@ -9,7 +9,7 @@ A web application that analyzes any GitHub user's profile and generates visual i
 - **Language Breakdown** - Interactive donut chart showing programming language distribution
 - **Commit Activity** - Bar chart visualizing contribution patterns over time
 - **Top Repositories** - Showcase of best projects with stars, forks, and descriptions
-- **AI Developer Summary** - Intelligent profile analysis powered by local AI (Ollama) or rule-based fallback
+- **AI Developer Summary** - Intelligent profile analysis powered by Google Gemini, Ollama, or rule-based fallback
 - **Dark Mode UI** - GitHub-inspired dark theme
 
 ## Tech Stack
@@ -133,10 +133,41 @@ OLLAMA_MODEL=llama3.2
 4. AI generates a personalized developer summary (or falls back to rule-based analysis)
 5. Frontend displays interactive visualizations
 
+## Deployment
+
+### Deploy Backend to Render (Free)
+
+1. Go to [render.com](https://render.com) and sign up
+2. Click **New > Web Service**
+3. Connect your GitHub repo
+4. Configure:
+   - **Root Directory:** `backend`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+5. Add environment variables:
+   - `GEMINI_API_KEY` - Get free at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+   - `GITHUB_TOKEN` - Optional but recommended
+   - `FRONTEND_URL` - Your Vercel URL (after deploying frontend)
+
+### Deploy Frontend to Vercel (Free)
+
+1. Go to [vercel.com](https://vercel.com) and sign up
+2. Click **Add New > Project**
+3. Import your GitHub repo
+4. Configure:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Vite
+5. Add environment variable:
+   - `VITE_API_URL` - Your Render backend URL + `/api` (e.g., `https://your-app.onrender.com/api`)
+
+### Update CORS
+
+After deploying, add your Vercel URL to Render's `FRONTEND_URL` environment variable.
+
 ## License
 
 MIT License - feel free to use this project for your portfolio!
 
 ---
 
-Built with React, FastAPI, and Ollama
+Built with React, FastAPI, and Google Gemini AI
